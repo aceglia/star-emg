@@ -153,6 +153,8 @@ class StreamSave:
     def run(self, queue, channels, data_rate, finish_saving_event):
         self.init_stream(n_channels=len(channels), data_rate=data_rate, channel_names=channels)
         self._init_zarr() if self.use_zarr else None
+        # ready_event.set()
+        # self.parent.parent.log_box.log("Zarr writer is ready to receive data.")
         while True:
             try:
                 packet = queue.get(timeout=0.1)

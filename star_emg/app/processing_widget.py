@@ -769,6 +769,7 @@ class StreamProcessingWidget(ProcessingWidget):
         self.display_options.enable()
         self.display_options.set_file_params(self.channels)
         self.remover_options.new_stream(self.channels, self.process_args_event, self.queue_process_args)
+        self.ready = mp.Event()
         self.plot.initialize_data(
             self.stream_widget.server.buffer,
             time,
@@ -815,7 +816,6 @@ class StreamProcessingWidget(ProcessingWidget):
                 daemon=True,
             )
             self.processes.append(p)
-
         self.save_process = mp.Process(
             target=self.stream_widget.stream_save.run,
             args=(
@@ -824,9 +824,9 @@ class StreamProcessingWidget(ProcessingWidget):
                 self.acquisition_rate,
                 self.finish_saving,
             ),
+
             daemon=False,
         )
-
         self.save_process.start()
         for p in self.processes:
             p.start()

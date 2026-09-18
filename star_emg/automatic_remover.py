@@ -464,6 +464,8 @@ class ArtifactRemover:
         for p, ha in enumerate(harmonics):
             try:
                 if recompute_filters:
+                    if not isinstance(fs, int):
+                        fs = int(fs)
                     b, a = scipy.signal.iirnotch(ha, quality_factor, fs=fs)
                     b_list.append(b)
                     a_list.append(a)

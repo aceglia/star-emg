@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import threading
 
@@ -11,7 +10,7 @@ from ..processing_utils import Quality
 from .popup_utils import ChannelsPopup, SaveStreamPopup
 from .stream_utils import CustomQueue
 from .save_utils import StreamSave
-from biosiglive.streaming.async_server import AsyncTCPServer
+from .ced_talker.port_reader import PacketReader
 import asyncio
 
 
@@ -23,7 +22,6 @@ class StreamWidget(QWidget):
     """
     Class that handles the stream widget in the GUI.
     """
-
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
@@ -40,6 +38,9 @@ class StreamWidget(QWidget):
         self.save_popup = None
         self.stream_save = None
         self.save_path = None
+        self.use_zarr = True
+        self.compress = True
+        self.compression_level = 3
 
     def task(self, d, t):
         """
@@ -48,6 +49,7 @@ class StreamWidget(QWidget):
         """
         if not self.is_running_event.is_set():
             self.is_running_event.set()
+        print(t[0])
         [self.queue_process[i].put_nowait((d[chan], t, chan)) for i, chan in self.channels_mapping.items()]
 
     def _init_layout(self):
@@ -64,7 +66,7 @@ class StreamWidget(QWidget):
         self.adress_in = QLineEdit()
         self.adress_in.setText("127.0.0.1")
         self.port_in = QLineEdit()
-        self.port_in.setText("12345")
+        self.port_in.setText("COM110")
         self.ac_rate_in = QLineEdit()
         self.ac_rate_in.setText("2000")
         self.set_channels_button = QPushButton("Set Channels")
@@ -146,11 +148,14 @@ class StreamWidget(QWidget):
 
     def _run_asyncio(self):
         """
-        Function to run the asyncio server.
+        Function to run the asyncio server. 
         """
-        self.server = AsyncTCPServer(self.address, self.port, buffer_length=self.display_window)
-        self.server.init_buffer(len(self.channels), dt=1 / self.acquisition_rate)
-        asyncio.run(self.server.start(task=self.task))
+        # self.server = AsyncTCPServer(self.address, self.port, buffer_length=self.display_window)
+        # self.server.init_buffer(len(self.channels), dt=1 / self.acquisition_rate)
+        # asyncio.run(self.server.start(task=self.task))
+        self.server = PacketReader(self.port_in.text(), n_channels=len(self.channels), dt=1 / self.acquisition_rate, buff_size=self.display_window)
+        self.server.task = self.task
+        asyncio.run(self.server.receiver())
 
     def _save_checkbox(self):
         """
@@ -286,7 +291,7 @@ class StreamWidget(QWidget):
 
     @property
     def port(self):
-        return int(self.port_in.text())
+        return str(self.port_in.text())
 
     @property
     def acquisition_rate(self):
