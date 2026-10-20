@@ -204,7 +204,7 @@ class OptionWidget(QWidget):
         --------
         dict: The processing arguments as a dictionary.
         """
-        args_item = self.init_process_args if keys_item is None else keys_item
+        args_item = self.init_process_args if keys_item is None or len(keys_item) == 0 else keys_item
         dic_item = value_item if value_item is not None else self.__dict__
         params_dict = {}
         for name, value in args_item.items():
@@ -445,7 +445,11 @@ class SVDOptions(OptionWidget):
     def set_factor(self, text: str):
         if text == "":
             return
-        self.factor = float(text)
+        mult = 1
+        if text.startswith("-"):
+            mult = -1
+            text = text[1:]
+        self.factor = mult * float(text)
 
     def set_low_freq(self, text: str):
         if text == "":
@@ -585,6 +589,7 @@ class OfflineRemover(Remover):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.processed_data = False
 
     def _init_remover(self, path_file: str, **kwargs):
         """
@@ -602,6 +607,15 @@ class OfflineRemover(Remover):
         None
         """
         self.remover = ArtifactRemover(data=path_file, **kwargs)
+        loaded = self.remover.data_loader.loaded_data
+        preprocessing = loaded['preprocessing'] 
+        same = [1 if preprocessing[key] == kwargs[key] else 0 for key in preprocessing.keys() if key != 'data_rate']
+        if not any(same):
+            kwargs = {key: preprocessing[key] for key in preprocessing.keys()}
+            kwargs['data_rate'] = loaded['data_rate']
+            self.parent.parent.log_box.log(f"WARNING: The data was preprocessed with different parameters than the ones you provided. Falling back to {kwargs}.")
+        if loaded['processed_data_notch'] is not None or loaded['processed_data_svd'] is not None:
+            self.processed_data = True
         data_shape = self.remover.data_loader.init_data.shape
         window = 25_000
         total_epochs = data_shape[0]
@@ -727,11 +741,11 @@ class OfflineRemover(Remover):
         for option in [self.notch_options, self.svd_options]:
             option.update_frame(frame_number)
 
-    def get_cleaned_data(self, epochs: list = None, channel: list = None) -> np.ndarray:
+    def get_cleaned_data(self, epochs: list = None, channel: list = None, data=None) -> np.ndarray:
         """
         Return the cleaned data for the specified epochs and channel. If epochs is None, return all epochs. If channel is None, return all channels.
         """
-        data = self.remover.solution.output
+        data = self.remover.solution.output if data is None else data
         if epochs is not None:
             data = data[epochs, :, :]
         if channel is not None:

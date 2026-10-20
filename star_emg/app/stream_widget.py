@@ -40,6 +40,9 @@ class StreamWidget(QWidget):
         self.save_popup = None
         self.stream_save = None
         self.save_path = None
+        self.compress = True
+        self.compression_level = 3
+        self.use_zarr = True
 
     def task(self, d, t):
         """
@@ -108,15 +111,14 @@ class StreamWidget(QWidget):
         """
         Start the stream.
         """
-        self.parent.parent._check_for_unsaved_work()
         self.parent.parent.toolbar.save_button.setEnabled(False)
         self.parent.parent.toolbar.save_as_button.setEnabled(False)
         self._change_widget_state(not_playing=False)
         if not self.paused:
-            if self.save_popup is not None:
-                self._get_save_options()
+            self.parent.parent._check_for_unsaved_work()
+            self._get_save_options()
             self.stream_save = StreamSave(
-                use_zarr=self.use_zarr, compress=self.compress, compression_level=self.compression_level
+                save_path=self.save_path, use_zarr=self.use_zarr, compress=self.compress, compression_level=self.compression_level
             )
             save_queue = CustomQueue(name="save_queue")
             # self.parent.parent.log_box.log(f"Saving stream to: {self._tmp_path}")

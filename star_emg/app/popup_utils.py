@@ -66,7 +66,7 @@ class FilterDialog(QDialog):
         self.setWindowTitle("Data pre-filtering")
         layout = QGridLayout()
         self.fs = fs
-        label = QLabel("Sample rate (Hz):")
+        label = QLabel("Sample rate (Hz) (Optional if already in file):")
         self.fs_input = QLineEdit(str(fs) if fs is not None else "")
         layout.addWidget(label, 0, 0, 1, 1)
         layout.addWidget(self.fs_input, 0, 1, 1, 2)

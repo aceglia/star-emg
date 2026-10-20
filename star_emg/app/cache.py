@@ -21,7 +21,6 @@ class Cache:
         Retrieves the value associated with the given key from the cache. If the cache is not initialized or the key does not exist, it returns None.
 
     """
-
     def __init__(self, cache_file):
         self.cache_file = cache_file
         self.cache_dict = {}

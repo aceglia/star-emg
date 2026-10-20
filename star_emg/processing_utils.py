@@ -522,7 +522,7 @@ class Quality:
                 else np.nan
             )
             quality[(3, *indices[:-1])] = (
-                robust_max_percentile(fft[..., : int(np.argwhere(fft_freqs > maxw)[0])], per)
+                robust_max_percentile(fft[..., : int(np.argwhere(fft_freqs > maxw)[0].item())], per)
                 if 3 in analysis
                 else np.nan
             )

@@ -99,7 +99,6 @@ def load_txt_file(path: str, delimiter: str = "\t") -> Tuple[ArrayLike, List[str
                 rows = []
                 continue
             rows.append(row)
-        # Append last frame
         if rows:
             frames.append(rows)
 
@@ -114,9 +113,9 @@ def load_txt_file(path: str, delimiter: str = "\t") -> Tuple[ArrayLike, List[str
     time_vector = None
     if is_time_vector:
         data_rate = 1 / np.mean(np.diff(array[:, 0, :], axis=-1))
-        array = array[:, 1:, :]
         channel_names = channel_names[1:]
         time_vector = array[:, 0, :]
+        array = array[:, 1:, :]
     frame_idx = np.arange(0, len(frames))
 
     return array, channel_names, frame_idx, data_rate, time_vector
@@ -221,7 +220,30 @@ def load_from_dict(data_dic: Dict[str, Any]) -> Tuple[ArrayLike, List[str], int,
     data_rate = None
     if "data_rate" in data_dic.keys():
         data_rate = data_dic["data_rate"]
-    return array, channel_names, frames, data_rate
+
+    time_vector = None
+    if 'time' in data_dic.keys():
+        time_vector = data_dic['time'] if data_dic['time'].shape == array[:, 0, :] .shape else None
+    return array, channel_names, frames, data_rate, time_vector, data_dic
+
+def load_npz_file(path: str, channel_names: Optional[List[str]] = None) -> Tuple[ArrayLike, List[str], int, float]:
+    """
+    Load a .npz file.
+
+    Parameters
+    ------------
+    path : str
+
+    Returns
+    --------
+    tuple[np.ndarray, list[str], int, float]
+    """
+    data = np.load(path)
+    if not ("values" in data):
+        raise ValueError("No recognized data found")
+    if channel_names is not None:
+        data["channel_names"] = channel_names
+    return load_from_dict(data)
 
 
 def load_bio_file(
@@ -279,7 +301,6 @@ def _load_mat_spike(data_dict: dict) -> Tuple[ArrayLike, List[str], List[int], f
     list_array = [np.array(chan[channel_content.index("values")]).flatten() for chan in all_chans]
     arr_filled = [list(tpl) for tpl in zip(*zip_longest(*list_array))]
     array = np.vstack(arr_filled)[None, ...]
-    # change None with nan
     array[array == None] = np.nan
     return array, chanel_names, frames, data_rate
 
@@ -351,6 +372,68 @@ def load_mat_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
 
     raise ValueError("No recognized data found")
 
+def load_npz_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
+    """
+    Loads data from a npz file.
+
+    Parameters:
+    -----------
+    path : str
+       The file path to the .npz file to be loaded. The method will attempt to load the data from the specified file path and extract the relevant signal data, channel names, frame indices, and data rate based on the structure of the .npz file.
+
+    Returns:
+    --------
+    tuple
+        A tuple containing the following elements:
+        - array: A numpy array containing the signal data extracted from the .npz file.
+        - chanel_names: A list of strings representing the names of the channels in the signal data.
+        - frames: A list of integers representing the frame indices corresponding to the signal data.
+        - data_rate: A float representing the data rate (sampling frequency) of the signal data.
+    """
+    try:
+        npz_file = np.load(path, allow_pickle=True)
+    except Exception:
+        raise ValueError("Cannot load .npz file")
+
+    if "values" in npz_file and "channel_names" in npz_file and "data_rate" in npz_file:
+        return load_from_dict(npz_file)
+
+    raise ValueError("No recognized data found")
+
+def load_pkl_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
+    """
+    Loads data from a pkl file.
+
+    Parameters:
+    -----------
+    path : str
+       The file path to the .pkl file to be loaded. The method will attempt to load the data from the specified file path and extract the relevant signal data, channel names, frame indices, and data rate based on the structure of the .pkl file.
+
+    Returns:
+    --------
+    tuple
+        A tuple containing the following elements:
+        - array: A numpy array containing the signal data extracted from the .pkl file.
+        - chanel_names: A list of strings representing the names of the channels in the signal data.
+        - frames: A list of integers representing the frame indices corresponding to the signal data.
+        - data_rate: A float representing the data rate (sampling frequency) of the signal data.
+    """
+    try:
+        import pickle
+    except ImportError:
+        raise ImportError("pickle module is not available")
+
+    try:
+        with open(path, "rb") as f:
+            pkl_file = pickle.load(f)
+    except Exception:
+        raise ValueError("Cannot load .pkl file")
+
+    if "values" in pkl_file and "channel_names" in pkl_file and "data_rate" in pkl_file:
+        return load_from_dict(pkl_file)
+
+    raise ValueError("No recognized data found")
+
 
 class DataLoader:
     """
@@ -397,6 +480,7 @@ class DataLoader:
         self.init_data = None
         self.frames = []
         self.channel_names = []
+        self.loaded_data = None
         self.data_rate = None
         self.time_vector = None
 
@@ -455,23 +539,30 @@ class DataLoader:
         Loads file and set attrbutes data, channel_names, frames, and data_rate. This method is responsible for loading the data from the specified file path based on the file format (such as .txt, .bio, .mat, or .csv). It uses the appropriate loading function for each file format to extract the signal data, channel names, frame indices, and data rate from the file. If the data rate is not provided in the file and is specified in the loading parameters, it will use the provided data rate. If neither is available, it raises a ValueError indicating that the data rate must be provided if not loaded from the file.
         """
         self.time_vector = None
+        self.loaded_data = None
 
         if self.path.endswith(".txt"):
             self.data, self.channel_names, self.frames, self.data_rate, self.time_vector = load_txt_file(
                 self.path, self.delimiter
             )
         elif self.path.endswith(".bio"):
-            self.data, self.channel_names, self.frames, self.data_rate = load_bio_file(self.path, self.channel_names)
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_bio_file(self.path, self.channel_names)
         elif self.path.endswith(".mat"):
-            self.data, self.channel_names, self.frames, self.data_rate = load_mat_file(self.path)
+            self.data, self.channel_names, self.frames, self.data_rate, self.loaded_data = load_mat_file(self.path)
         elif self.path.endswith(".csv"):
             self.data, self.channel_names, self.frames, self.data_rate = load_csv_file(self.path, self.delimiter)
+        elif self.path.endswith(".npz"):
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_npz_file(self.path)
+        elif self.path.endswith(".pkl"):
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_pkl_file(self.path)
         else:
             raise ValueError("File format not supported")
         if self.data_rate is None and self.loading_params["data_rate"] is not None:
             self.data_rate = self.loading_params["data_rate"]
         elif self.data_rate is None:
             raise ValueError("Data rate must be provided if not loaded from file")
+        if self.loaded_data is not None:
+            self.loaded_data = self._extract_items(self.loaded_data)
 
         if self.time_vector is None:
             self.time_vector = np.repeat(
@@ -479,6 +570,19 @@ class DataLoader:
                 self.data.shape[0],
                 axis=0,
             )
+
+    def _extract_items(self, data_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extracts items when saved with numpy archive. This method extracts items from a dictionary and returns a new dictionary with the extracted items.
+        """
+        extracted = {}
+        for key, value in data_dict.items():
+            if isinstance(value, np.ndarray):
+                extracted[key] = value.item() if value.size == 1 else value
+            else:
+                extracted[key] = value
+        return extracted
+
 
     def load_data(self, ignore_filtering: bool = False) -> None:
         """

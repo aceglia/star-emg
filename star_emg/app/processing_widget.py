@@ -1,10 +1,11 @@
 from functools import partial
 import json
 import os
+from pathlib import Path
 import time
 import zarr
 
-from PyQt5.QtWidgets import QWidget, QSplitter, QVBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QWidget, QSplitter, QVBoxLayout, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QThreadPool, QTimer
 
 import numpy as np
@@ -258,7 +259,7 @@ class OfflineProcessingWidget(ProcessingWidget):
             list_results.append(fct(data=data[d], fs=data_rate, fft_freqs=fft_freqs, window=process_window, **kwargs))
         return list_results, _init_data_shape
 
-    def set_file(self, file_list, process_data_file=None, filtering_params=None):
+    def set_file(self, file_list, filtering_params=None):
         """
         Load the file and set the parameters.
         Parameters:
@@ -288,15 +289,13 @@ class OfflineProcessingWidget(ProcessingWidget):
         if self.remover_options.remover is None:
             self.file_path = None
             return
+
         clean_svd, clean_notch = None, None
         for qual in [self.quality_notch, self.quality_svd]:
             qual.init_shape(self.remover_options.get_data().shape)
-        if process_data_file is not None:
-            clean_svd, clean_notch = self.get_process_data(process_data_file)
-            clean = [clean_notch, clean_svd]
-            init_data = self.remover_options.get_data()
-            for q, qual_fct in enumerate([self.quality_notch.compute_quality, self.quality_svd.compute_quality]):
-                qual_fct(init_data, clean[q], ground_truth=None, fs=self.remover_options.get_rate())
+
+        if self.remover_options.processed_data:
+            clean_svd, clean_notch = self.load_processed_data()
 
         self.display_options.set_file_params(
             self.remover_options.get_channels(), self.remover_options.get_all_data().shape[0]
@@ -313,6 +312,37 @@ class OfflineProcessingWidget(ProcessingWidget):
         self.parent.toolbar.radio_notch_filter_button.setEnabled(True)
         self.update_frame(0)
         self.update_filter("svd")
+
+    def load_processed_data(self):
+        """
+        Load the processed data from the loaded data.
+        """
+        self.remover_options.svd_options.load_config(self.remover_options.remover.data_loader.loaded_data["svd_parameters"])
+        self.remover_options.notch_options.load_config(self.remover_options.remover.data_loader.loaded_data["notch_parameters"])
+        clean_svd = self.remover_options.remover.data_loader.loaded_data["processed_data_svd"]
+        clean_notch = self.remover_options.remover.data_loader.loaded_data["processed_data_notch"]
+        for param in ["svd_parameters", "notch_parameters"]:
+            for frame, list_tmp in self.remover_options.remover.data_loader.loaded_data[param].items():
+                for dic_tmp in list_tmp:
+                    if dic_tmp is None:
+                        continue
+                    epoch_idx = [int(frame.split("_")[-1])]
+                    clean = clean_notch if dic_tmp['notch_filter'] is True else clean_svd
+                    self.set_quality(clean, epoch_idx, dic_tmp['channel_idxs'], dic_tmp['notch_filter'])
+        return clean_svd, clean_notch
+
+    def set_quality(self, clean, epoch_idx, channel_idx, notch_filter=True):
+        """
+        """
+        qual_fct = self.quality_notch.compute_quality if notch_filter else self.quality_svd.compute_quality
+        qual_fct(
+            self.remover_options.get_data(epoch_idx, channel_idx).astype(float),
+            self.remover_options.get_cleaned_data(epoch_idx, channel_idx, clean).astype(float),
+            ground_truth=None,
+            fs=self.remover_options.get_rate(),
+            idx=epoch_idx,
+            channel=channel_idx,
+        )
 
     def update_processed_plot(self, epochs_idxs, channel_idxs):
         """
@@ -344,34 +374,61 @@ class OfflineProcessingWidget(ProcessingWidget):
         --------
         None
         """
+        path = Path(path)
+        if path.suffix != ext:
+            path = path.with_suffix(ext)
+
         self.process_file_path = path
+        config = self.get_config()
         dic_to_save = {
-            "raw_data": self.plot.raw_data,
+            "values": self.plot.raw_data,
             "processed_data_svd": self.plot.clean_svd,
             "processed_data_notch": self.plot.clean_notch,
-            "channels": self.remover_options.get_channels(),
-            "rate": self.remover_options.get_rate(),
+            "channel_names": self.remover_options.get_channels(),
+            "data_rate": self.remover_options.get_rate(),
+            "preprocessing": config["preprocessing_params"],
+            "svd_parameters": config["filters_params_svd"],
+            "notch_parameters": config["filters_params_notch"],
         }
-        if ext == ".mat":
-            sio.savemat(path, dic_to_save)
-        elif ext == ".bio":
-            save(dic_to_save, path)
-        elif ext == ".txt":
-            channels = self.remover_options.get_channels()
-            suffix = ["", "_clean_svd", "_clean_notch"]
-            channels_str = sum([[chan + s for chan in channels] for s in suffix], [])
-            channels_str = ["time"] + channels_str
-            time_vector = self.remover_options.remover.data_loader.time_vector
-            write_txt_file(
-                np.hstack((time_vector, self.plot.raw_data, self.plot.clean_svd, self.plot.clean_notch)),
-                path=path,
-                headers=channels_str,
-            )
+        try:
+            if ext == ".mat":
+                sio.savemat(path, dic_to_save)
+            elif ext == ".npz":
+                np.savez(path, **dic_to_save)
+            elif ext == ".bio":
+                save(dic_to_save, path)
+            elif ext == ".txt" or ext == ".csv":
+                # message box
+                box = QMessageBox()
+                box.setIcon(QMessageBox.Information)
+                box.setText(
+                    "Warning: The txt file will only contain the raw data and the processed data for the selected channels." \
+                    " The processing parameters will not be saved. Are you sure you want to continue?\n" \
+                    " You can save the parameters using the 'Save filter config' button."
+                )
+                box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                box.exec_()
+                if box.result() == QMessageBox.Cancel:
+                    return
+                channels = self.remover_options.get_channels()
+                suffix = ["", "_clean_svd", "_clean_notch"]
+                channels_str = sum([[chan + s for chan in channels] for s in suffix], [])
+                channels_str = ["time"] + channels_str
+                time_vector = self.remover_options.remover.data_loader.time_vector
+                write_txt_file(
+                    np.hstack((time_vector, self.plot.raw_data, self.plot.clean_svd, self.plot.clean_notch)),
+                    path=path,
+                    headers=channels_str,
+                )
+        except Exception as e:
+            self.parent.log_box.log(f"Error while saving data: {e}")
+            return False
         # export_csv(path, **dic_to_save)
         # self.parent.log_box.log(
         #     "To use the processed file in signal you can import the txt file saved at " + path.replace(".mat", ".txt")
         # )
         self.parent.set_saved_ok(True)
+        return True
 
     def load_config(self, path):
         """
@@ -395,26 +452,6 @@ class OfflineProcessingWidget(ProcessingWidget):
         self.remover_options.svd_options.load_config(config_data["filters_params_svd"])
         self.remover_options.notch_options.load_config(config_data["filters_params_notch"])
 
-    def get_process_data(self, file_path):
-        """
-        Get the processed data from a file.
-        Parameters:
-        -----------
-        file_path: str
-            The path to the file.
-        Returns:
-        --------
-        tuple
-            The processed data. Returns:
-        --------
-        tuple
-            The processed data. Returns:
-        """
-        if file_path is None:
-            return
-        data = sio.loadmat(file_path)
-        return data["processed_data_svd"], data["processed_data_notch"]
-
     def save_config(self, path):
         """
         Save the configuration file in JSON format.
@@ -428,17 +465,32 @@ class OfflineProcessingWidget(ProcessingWidget):
         --------
         None
         """
+        config = self.get_config()
+        with open(path, "w") as f:
+            json.dump(config, f, indent=4)
+        self.parent.log_box.log(f"Configuration saved at: {path}")
+
+    def get_config(self):
+        """
+        Get the configuration file in JSON format.
+
+        Parameters:
+        -----------
+        path: str
+            The path to the configuration file.
+
+        Returns:
+        --------
+        None
+        """
         config = {
             "mode": "offline",
             "file_path": self.file_path,
-            "process_file_path": self.process_file_path,
             "preprocessing_params": self.remover_options.remover.data_loader.filtering_params,
             "filters_params_svd": self.remover_options.svd_options.process_arguments,
             "filters_params_notch": self.remover_options.notch_options.process_arguments,
         }
-        with open(path, "w") as f:
-            json.dump(config, f, indent=4)
-        self.log_box.log(f"Configuration saved at: {path}")
+        return config
 
     def _convert_quality_to_dict(self, quality):
         """ "
@@ -459,7 +511,9 @@ class OfflineProcessingWidget(ProcessingWidget):
             "Median frequency": [quality[0][2], quality[1][2]],
             "FFT Amplitude": [quality[0][3], quality[1][3]],
         }
-        return {k: [np.round(float(v[0]), 3), np.round(float(v[1]), 3)] for k, v in dict_to_return.items()}
+        return {
+            k: [np.round(float(v[0].item()), 3), np.round(float(v[1].item()), 3)] for k, v in dict_to_return.items()
+        }
 
     def show_config(self, idx):
         """

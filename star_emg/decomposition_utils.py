@@ -108,8 +108,20 @@ def compute_svd(
     if randomized:
         nb_principal_components = hankel.shape[0] if nb_principal_components is None else nb_principal_components
         if pca is None:
-            raise ImportError("fbpca is not installed. Please install it to use randomized SVD.")
-        U, S, Vh = pca(hankel, k=nb_principal_components, raw=True, n_iter=2)
+            print(
+                "ImportError: fbpca is not installed. Falling back to classic SVD. Please install fbpca to use this feature."
+            )
+            return compute_svd(
+                emg_signal,
+                n_rows=n_rows,
+                hankel=hankel,
+                randomized=False,
+                nb_principal_components=nb_principal_components,
+                epsilon=epsilon,
+                hankel_delay=hankel_delay,
+            )
+        else:
+            U, S, Vh = pca(hankel, k=nb_principal_components, raw=True, n_iter=2)
     else:
         U, S, Vh = scipy.linalg.svd(
             hankel,

@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from .gui_utils import LogBox
-from .file_dialog import LoadDialog
+from .file_dialog import LoadDialog, SaveDialog
 from .cache import Cache
 from .popup_utils import popup_warning_split, popup_warning_continue, popup_warning_save
 
@@ -41,18 +41,21 @@ class CustomToolBar:
         self.load_files_button = self.file_menu.addAction("Load file")
         self.load_files_button.triggered.connect(self.parent._load_file)
         self.load_files_button.setEnabled(True)
-        self.load_config_button = self.file_menu.addAction("Load config")
-        self.load_config_button.triggered.connect(self.parent._load_config)
-        self.load_config_button.setEnabled(True)
-        self.save_config_button = self.file_menu.addAction("Save config")
-        self.save_config_button.setEnabled(False)
-        self.save_config_button.triggered.connect(self.parent._save_config)
+        # self.load_config_button = self.file_menu.addAction("Load config")
+        # self.load_config_button.triggered.connect(self.parent._load_config)
+        # self.load_config_button.setEnabled(True)
+        # self.save_config_button = self.file_menu.addAction("Save config")
+        # self.save_config_button.setEnabled(False)
+        # self.save_config_button.triggered.connect(self.parent._save_config)
         self.save_button = self.file_menu.addAction("Save")
         self.save_button.triggered.connect(self.parent.save)
         self.save_button.setEnabled(False)
         self.save_as_button = self.file_menu.addAction("Save As")
         self.save_as_button.triggered.connect(self.parent.save_as)
         self.save_as_button.setEnabled(False)
+        self.export_button = self.file_menu.addAction("Export")
+        # self.export_button.triggered.connect(self.parent.export_data)
+        self.export_button.setEnabled(False)
         self.quit_button = self.file_menu.addAction("Quit")
         self.quit_button.triggered.connect(self.parent.quit)
 
@@ -68,6 +71,10 @@ class CustomToolBar:
         self.radio_svd_filter_button = self.filter_menu.addAction("SVD filter")
         self.radio_svd_filter_button.setEnabled(False)
         self.radio_svd_filter_button.triggered.connect(self.parent.svd_selected)
+
+        self.save_config_button = self.filter_menu.addAction("Save filter config")
+        self.save_config_button.setEnabled(False)
+        self.save_config_button.triggered.connect(self.parent._save_config)
         self.disable_filter_menu()
 
     def _stream_menu(self):
@@ -120,6 +127,7 @@ class GUI(QMainWindow):
         self.current_filter = "notch"
         self.processing_widget = OfflineProcessingWidget(self)
         self.stream_processing_widget = StreamProcessingWidget(self)
+        self.default_extension = ".npz"
         self.toolbar = CustomToolBar(self)
         # self.addToolBar(self.toolbar)
         self._init_layout()
@@ -188,7 +196,7 @@ class GUI(QMainWindow):
         self.toolbar.go_stream_button.setEnabled(False)
         self.toolbar.adjust_for_mode(False)
         self.stack.setCurrentWidget(self.stream_processing_widget)
-        self.toolbar.save_config_button.setEnabled(True)
+        self.toolbar.save_config_button.setEnabled(False)
         self.mode = "stream"
 
     def go_offline_mode(self):
@@ -233,29 +241,33 @@ class GUI(QMainWindow):
             )
             if not self._continue:
                 return
+        self.go_offline_mode()
         dialog = LoadDialog(
             parent=self,
             caption="Load file",
-            filter="Matlab format (version < 7) (*.mat);;Text file (*.txt);; Biosiglive format (*.bio)",
+            filter="Numpy archive (*.npz);; Matlab format (version < 7) (*.mat);;Text file (*.txt);; Biosiglive format (*.bio)",
             load_method=self.processing_widget.set_file,
         )
         if dialog.filename == "":
             return
         if self.processing_widget.canceled:
             return
-        # self.toolbar.save_files_button.setEnabled(True)
         path_tmp = Path(self.processing_widget.file_path)
         self.default_base_name = os.path.join(str(path_tmp.parent), path_tmp.stem)
-        self.default_save_name = os.path.join(str(path_tmp.parent), path_tmp.stem + "_processed" + path_tmp.suffix)
-        self.default_extension = path_tmp.suffix
+        self.default_save_name = os.path.join(str(path_tmp.parent), path_tmp.stem + "_processed" + self.default_extension)
+        # self.default_extension = path_tmp.suffix
         self.toolbar.save_config_button.setEnabled(True)
+        self.toolbar.save_button.setEnabled(True)
+        self.toolbar.save_as_button.setEnabled(True)
+        self.toolbar.export_button.setEnabled(True)
+
 
     def _save_file(self):
         """
         Run the processing widget's save_file method to save the processed file. The file is saved with a name based on the default save name, with "_processed.mat" appended to it. It also logs the save action in the log box.
         """
         self.log_box.log(f"Saving file at: {self.default_save_name}")
-        self.processing_widget.save_file(self.default_save_name, self.default_extension)
+        return self.processing_widget.save_file(self.default_save_name, self.default_extension)
 
     def _check_config(self, path):
         """
@@ -298,7 +310,7 @@ class GUI(QMainWindow):
         self.default_base_name = os.path.join(str(path_tmp.parent), path_tmp.stem)
         self.default_save_name = os.path.join(str(path_tmp.parent), path_tmp.stem + "_processed" + path_tmp.suffix)
         self.toolbar.save_config_button.setEnabled(True)
-        self.toolbar.save_as_config_button.setEnabled(True)
+        # self.toolbar.save_as_config_button.setEnabled(True)
 
     def _save_config(self):
         """
@@ -358,16 +370,30 @@ class GUI(QMainWindow):
         """
         Open a popup dialog to allow the user to enter a new name for the file they want to save. The default name in the input dialog is based on the current default save name, with the file extension removed. If the user confirms the new name, it updates the default save name with the new name and calls the save method to save the file with the new name.
         """
-        text, ok = QInputDialog.getText(
-            self,
-            "Export option",
-            "Chose a basis name for data export:",
-            QLineEdit.Normal,
-            self.default_save_name.split("/")[-1],
+        # text, ok = QInputDialog.getText(
+        #     self,
+        #     "Export option",
+        #     "Chose a name for the file:",
+        #     QLineEdit.Normal,
+        #     self.default_save_name.split("/")[-1],
+        # )
+        dialog = SaveDialog(
+            parent=self,
+            caption="Save As",
+            filter="Numpy archive (*.npz);; Matlab format (version < 7) (*.mat);;Text file (*.txt);; Biosiglive format (*.bio)",
+            save_method=None,
         )
-        if ok:
-            self.default_save_name = "/".join(self.default_save_name.split("/")[:-1]) + "/" + text
-            self.save()
+        file_path = Path(dialog.filename)
+        before = {"file_path": self.default_save_name, "extension": self.default_extension, "base_name": self.default_base_name}
+        if file_path is not None or file_path != "":
+            self.default_save_name = file_path
+            self.default_extension = file_path.suffix
+            self.default_base_name = self.default_save_name.with_suffix("")
+            is_saved = self._save_file()
+            if not is_saved:
+                self.default_save_name = before["file_path"]
+                self.default_extension = before["extension"]
+                self.default_base_name = before["base_name"]
 
     def show_split_windows(self, text):
         """
@@ -387,7 +413,7 @@ class GUI(QMainWindow):
         """
         try:
             self._save_file()
-            self._save_config()
+            # self._save_config()
         except Exception as e:
             self.log_box.log("Error occured while saving the files: ", str(repr(e)))
 
