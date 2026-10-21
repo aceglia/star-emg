@@ -1,0 +1,17 @@
+name: star-emg
+channels:
+- conda-forge
+- default
+dependencies:
+- python >=3.10
+- packaging
+- matplotlib-base
+- numpy
+- scipy
+- pyqtgraph
+- pip
+- pip:
+  - sphinx
+  - sphinx_rtd_theme
+  - myst_parser
+
