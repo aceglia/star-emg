@@ -1,0 +1,25 @@
+{
+  "attributes": {
+    "timestamp": 53.8512,
+    "notch_filter": false,
+    "quality_factor": 80,
+    "frequency_peaks": 30,
+    "first_peak": null,
+    "hankel_size": 62,
+    "hankel_delay": 1,
+    "process_window": 500,
+    "factor": 0.35,
+    "freq_bounds": [
+      10,
+      300
+    ],
+    "channel_idxs": [
+      0
+    ],
+    "channel_name": [
+      "Channel 0"
+    ]
+  },
+  "zarr_format": 3,
+  "node_type": "group"
+}

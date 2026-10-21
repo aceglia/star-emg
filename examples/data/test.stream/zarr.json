@@ -1,0 +1,13 @@
+{
+  "attributes": {
+    "sampling_rate": 2000.0,
+    "n_channels": 2,
+    "channel_names": [
+      "Channel 0",
+      "Channel 1"
+    ],
+    "format_version": "1.0"
+  },
+  "zarr_format": 3,
+  "node_type": "group"
+}
