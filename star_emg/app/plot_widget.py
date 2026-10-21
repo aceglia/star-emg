@@ -175,7 +175,7 @@ class ChannelPlot:
                 start = x[0][0] if len(x) == 2 else x[0]
                 stop = x[0][-1] if len(x) == 2 else x[0]
             except Exception as e:
-                print("Error while updating the plot. The data might be empty.", repr(e))
+                raise RuntimeError("Error while updating the plot. The data might be empty.", repr(e))
             # self.plot_item.setXRange(start, stop, padding=0)
             self.view.setLimits(xMin=start, xMax=stop)
         auto_range = False

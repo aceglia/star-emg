@@ -1,10 +1,9 @@
 import os
 from pathlib import Path
-
+import pandas as pd
 import numpy as np
 import multiprocessing as mp
 from biosiglive.streaming.utils import CircularBuffer
-import shutil
 
 try:
     import zarr
@@ -126,7 +125,6 @@ class StreamSave:
         assert time.shape[0] == n_samples
 
         self.zarr_recorder.append_signals(raw, processed, time)
-
         for cfg in config:
             self.zarr_recorder.append_config(cfg.pop("channel"), cfg.pop("t"), cfg)
         return self.zarr_recorder.get_size()
@@ -202,36 +200,6 @@ class StreamSave:
             chunk_seconds=self.chunk_duration,
         )
         return self.zarr_recorder.root
-
-    def convert_to_file(self, output_path, zarr_ds_path=None):
-        """
-        Convert the Zarr dataset to a single file (e.g., .npz or .h5).
-
-        Parameters
-        ----------
-        output_path : str
-            Path to the output file.
-        """
-        if output_path is None and self.save_path is None:
-            raise ValueError("Output path is not specified.")
-
-        if self.zarr_recorder is None and zarr_ds_path is None:
-            raise ValueError("Zarr recorder is not initialized.")
-
-        if zarr_ds_path is not None:
-            zarr_ds = ZarrRecording.load_dataset(zarr_ds_path)
-        else:
-            zarr_ds = self.zarr_recorder
-
-        raw = zarr_ds.root["signals"]["raw"][:]
-        processed = zarr_ds.root["signals"]["processed"][:]
-        time = zarr_ds.root["signals"]["time"][:]
-        meta = dict(zarr_ds.root.attrs)
-        configs = zarr_ds.read_all_configs()
-        self._save_ok = True
-        # remove the temporary Zarr dataset
-        # if self._tmp_path.exists():
-        #     shutil.rmtree(self._tmp_folder)
 
 
 class ZarrRecording:
@@ -448,17 +416,15 @@ class ZarrRecording:
             }
         """
 
-        all_configs = {}
+        all_configs = pd.DataFrame()
 
         configs = self.root["configs"]
 
         for channel_name in configs.group_keys():
 
             channel_group = configs[channel_name]
-
-            all_configs[channel_name] = {}
-
             for config_name in channel_group.group_keys():
+
                 cfg = channel_group[config_name]
                 config = dict(cfg.attrs)
                 # Load array parameters
@@ -470,11 +436,37 @@ class ZarrRecording:
 
                     config[key] = value
 
-                config_id = int(config_name)
-
-                all_configs[channel_name][config_id] = config
+                freq_bound_low, freq_bound_high = config.get("freq_bounds", (None, None))
+                config.pop("freq_bounds")
+                config["freq_bound_low"] = freq_bound_low
+                config["freq_bound_high"] = freq_bound_high
+                config["channel_idxs"] = config["channel_idxs"][0]
+                config["channel_name"] = config["channel_name"][0]
+                all_configs = pd.concat([all_configs, pd.DataFrame({**config}, index=[0])], ignore_index=True)
 
         return all_configs
+
+    def to_dict(self):
+        """
+        Convert the Zarr dataset to a dictionary.
+        """
+        raw = self.root["signals"]["raw"][:][None]
+        processed = self.root["signals"]["processed"][:][None]
+        time = self.root["signals"]["time"][:]
+        meta = dict(self.root.attrs)
+        configs = self.read_all_configs()
+        dic_to_save = {
+            "values": raw,
+            "processed_data_svd": processed,
+            "processed_data_notch": processed,
+            "time": time,
+            "channel_names": meta["channel_names"],
+            "data_rate": meta["sampling_rate"],
+            "preprocessing": {},
+            "svd_parameters": {},
+            "notch_parameters": {},
+        }
+        return dic_to_save, configs
 
     def get_duration(self):
         """

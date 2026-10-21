@@ -608,13 +608,15 @@ class OfflineRemover(Remover):
         """
         self.remover = ArtifactRemover(data=path_file, **kwargs)
         loaded = self.remover.data_loader.loaded_data
-        preprocessing = loaded['preprocessing'] 
-        same = [1 if preprocessing[key] == kwargs[key] else 0 for key in preprocessing.keys() if key != 'data_rate']
+        preprocessing = loaded["preprocessing"]
+        same = [1 if preprocessing[key] == kwargs[key] else 0 for key in preprocessing.keys() if key != "data_rate"]
         if not any(same):
             kwargs = {key: preprocessing[key] for key in preprocessing.keys()}
-            kwargs['data_rate'] = loaded['data_rate']
-            self.parent.parent.log_box.log(f"WARNING: The data was preprocessed with different parameters than the ones you provided. Falling back to {kwargs}.")
-        if loaded['processed_data_notch'] is not None or loaded['processed_data_svd'] is not None:
+            kwargs["data_rate"] = loaded["data_rate"]
+            self.parent.parent.log_box.log(
+                f"WARNING: The data was preprocessed with different parameters than the ones you provided. Falling back to {kwargs}."
+            )
+        if loaded["processed_data_notch"] is not None or loaded["processed_data_svd"] is not None:
             self.processed_data = True
         data_shape = self.remover.data_loader.init_data.shape
         window = 25_000
@@ -629,6 +631,8 @@ class OfflineRemover(Remover):
             )
         if self.parent.parent._split == "&Yes":
             self._split_data(window, total_epochs, rate)
+            if self.processed_data:
+                self.remover.data_loader.loaded_data = self._split_loaded_data(loaded, window, total_epochs)
             self.parent.parent._split = "&No"
         elif self.parent.parent._split == "Cancel":
             self.remover = None
@@ -659,6 +663,31 @@ class OfflineRemover(Remover):
         self.remover.data_loader.init_data = np.swapaxes(full_mat, 0, 1)
         time = np.linspace(0, int(epochs * window) / rate, int(epochs * window))
         self.remover.data_loader.time = time.reshape((epochs, window))
+
+    def _split_loaded_data(self, loaded_data: dict, window: int, epochs: int):
+        """
+        Split the loaded data if the data is longer than 25000 points per channel as the processing would be too slow.
+        Parameters:
+        -----------
+        loaded_data: dict
+            The loaded data from the file.
+        window: int
+            The window size to use for the processing.
+        epochs: int
+            The number of epochs to process.
+
+        Returns:
+        --------
+        None
+        """
+        for key in ["processed_data_notch", "processed_data_svd"]:
+            if key in loaded_data and loaded_data[key] is not None:
+                data = np.swapaxes(loaded_data[key], 0, 1)
+                full_mat = np.zeros((data.shape[0], 1, int(epochs * window)))
+                full_mat[..., : data.shape[-1]] = data
+                full_mat = full_mat.reshape(data.shape[0], epochs, window)
+                loaded_data[key] = np.swapaxes(full_mat, 0, 1)
+        return loaded_data
 
     def set_file(
         self,

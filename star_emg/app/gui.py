@@ -8,11 +8,13 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QSplitter,
-    QLineEdit,
-    QInputDialog,
+    QFileDialog,
     QStackedWidget,
 )
+import numpy as np
 from PyQt5.QtCore import Qt
+
+from star_emg.app.save_utils import ZarrRecording
 from .gui_utils import LogBox
 from .file_dialog import LoadDialog, SaveDialog
 from .cache import Cache
@@ -41,6 +43,9 @@ class CustomToolBar:
         self.load_files_button = self.file_menu.addAction("Load file")
         self.load_files_button.triggered.connect(self.parent._load_file)
         self.load_files_button.setEnabled(True)
+        self.load_files_button = self.file_menu.addAction("Load stream")
+        self.load_files_button.triggered.connect(self.parent._load_stream)
+        self.load_files_button.setEnabled(True)
         # self.load_config_button = self.file_menu.addAction("Load config")
         # self.load_config_button.triggered.connect(self.parent._load_config)
         # self.load_config_button.setEnabled(True)
@@ -53,9 +58,6 @@ class CustomToolBar:
         self.save_as_button = self.file_menu.addAction("Save As")
         self.save_as_button.triggered.connect(self.parent.save_as)
         self.save_as_button.setEnabled(False)
-        self.export_button = self.file_menu.addAction("Export")
-        # self.export_button.triggered.connect(self.parent.export_data)
-        self.export_button.setEnabled(False)
         self.quit_button = self.file_menu.addAction("Quit")
         self.quit_button.triggered.connect(self.parent.quit)
 
@@ -231,7 +233,31 @@ class GUI(QMainWindow):
         self.log_box.log("SVD filter selected")
         self.stack.currentWidget().update_filter("svd")
 
-    def _load_file(self):
+    def _load_stream(self):
+        from numcodecs import blosc
+
+        blosc.use_threads = False
+        blosc.set_nthreads(1)
+        directory = QFileDialog.getExistingDirectory(
+            self, "Select Stream Directory", self.cache.get_from_cache("last_dir")
+        )
+        if directory == "":
+            return
+        if not Path(directory).suffix == ".stream" and "zarr.json" not in os.listdir(directory):
+            self.log_box.log(f"Selected directory is not a valid stream directory: {directory}")
+            return
+        try:
+            self.log_box.log(f"Exporting stream to .npz file...")
+            zarr_ds = ZarrRecording.load_dataset(directory)
+            dic_to_save, _ = zarr_ds.to_dict()
+            np.savez(Path(directory).with_suffix(".npz"), **dic_to_save)
+            filename = str(Path(directory).with_suffix(".npz"))
+            self._load_file(False, load_dialog=False, filename=filename)
+        except Exception as e:
+            self.log_box.log(f"Error loading stream: {e}")
+            return
+
+    def _load_file(self, _, load_dialog=True, filename=False):
         """
         Open a file dialog to load a file for processing. If the user has unsaved work, it prompts them with a warning before proceeding. Once a file is selected and loaded, it updates the default save name and enables the appropriate buttons in the toolbar.
         """
@@ -241,26 +267,31 @@ class GUI(QMainWindow):
             )
             if not self._continue:
                 return
-        self.go_offline_mode()
-        dialog = LoadDialog(
-            parent=self,
-            caption="Load file",
-            filter="Numpy archive (*.npz);; Matlab format (version < 7) (*.mat);;Text file (*.txt);; Biosiglive format (*.bio)",
-            load_method=self.processing_widget.set_file,
-        )
-        if dialog.filename == "":
-            return
+        if load_dialog:
+            dialog = LoadDialog(
+                parent=self,
+                caption="Load file",
+                filter="Numpy archive (*.npz);; Matlab format (version < 7) (*.mat);;Text file (*.txt);; Biosiglive format (*.bio)",
+                load_method=None,
+            )
+            if dialog.filename == "":
+                return
+            if self.mode == "stream":
+                self.go_offline_mode()
+            filename = dialog.filename
+
+        self.processing_widget.set_file(filename)
         if self.processing_widget.canceled:
             return
         path_tmp = Path(self.processing_widget.file_path)
         self.default_base_name = os.path.join(str(path_tmp.parent), path_tmp.stem)
-        self.default_save_name = os.path.join(str(path_tmp.parent), path_tmp.stem + "_processed" + self.default_extension)
+        self.default_save_name = os.path.join(
+            str(path_tmp.parent), path_tmp.stem + "_processed" + self.default_extension
+        )
         # self.default_extension = path_tmp.suffix
         self.toolbar.save_config_button.setEnabled(True)
         self.toolbar.save_button.setEnabled(True)
         self.toolbar.save_as_button.setEnabled(True)
-        self.toolbar.export_button.setEnabled(True)
-
 
     def _save_file(self):
         """
@@ -384,7 +415,11 @@ class GUI(QMainWindow):
             save_method=None,
         )
         file_path = Path(dialog.filename)
-        before = {"file_path": self.default_save_name, "extension": self.default_extension, "base_name": self.default_base_name}
+        before = {
+            "file_path": self.default_save_name,
+            "extension": self.default_extension,
+            "base_name": self.default_base_name,
+        }
         if file_path is not None or file_path != "":
             self.default_save_name = file_path
             self.default_extension = file_path.suffix

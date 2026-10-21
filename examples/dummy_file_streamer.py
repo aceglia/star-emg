@@ -44,7 +44,8 @@ async def main(data, chunk_size=20, data_rate=2000):
 
 if __name__ == "__main__":
     import numpy as np
-    path_file = r"data\test001.txt"
+
+    path_file = r"data\example.txt"
     loader = DataLoader(path_file, center=True)
     loader._apply_stack_epochs()
 

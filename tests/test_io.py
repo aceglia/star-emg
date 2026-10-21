@@ -10,7 +10,6 @@ from star_emg.io_utils import (
     DataLoader,
 )
 
-
 # =============================================================================
 # ensure_array_dim
 # =============================================================================
@@ -277,17 +276,14 @@ import os
 from star_emg.io_utils import load_txt_file
 from star_emg.io_utils import load_mat_file
 from star_emg.io_utils import load_bio_file
+from star_emg.io_utils import load_npz_file
 
 base_example_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples", "data", "example")
 
 
 @pytest.mark.parametrize(
     "extension, fct",
-    [
-        (".txt", load_txt_file),
-        (".mat", load_mat_file),
-        (".bio", load_bio_file),
-    ],
+    [(".txt", load_txt_file), (".mat", load_mat_file), (".bio", load_bio_file), (".npz", load_npz_file)],
 )
 def test_load_file(extension, fct):
     example_txt_file = base_example_file + extension

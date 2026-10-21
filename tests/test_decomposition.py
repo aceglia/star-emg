@@ -5,8 +5,6 @@ from star_emg.decomposition_utils import (
     get_signal_from_hankel,
     hankel_delay_fast,
     compute_svd,
-    mean_around_row_max,
-    peak_energy_ratio,
     remove_singular_values,
 )
 

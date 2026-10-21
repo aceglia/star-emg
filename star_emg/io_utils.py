@@ -222,9 +222,10 @@ def load_from_dict(data_dic: Dict[str, Any]) -> Tuple[ArrayLike, List[str], int,
         data_rate = data_dic["data_rate"]
 
     time_vector = None
-    if 'time' in data_dic.keys():
-        time_vector = data_dic['time'] if data_dic['time'].shape == array[:, 0, :] .shape else None
+    if "time" in data_dic.keys():
+        time_vector = data_dic["time"] if data_dic["time"].shape == array[:, 0, :].shape else None
     return array, channel_names, frames, data_rate, time_vector, data_dic
+
 
 def load_npz_file(path: str, channel_names: Optional[List[str]] = None) -> Tuple[ArrayLike, List[str], int, float]:
     """
@@ -372,6 +373,7 @@ def load_mat_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
 
     raise ValueError("No recognized data found")
 
+
 def load_npz_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
     """
     Loads data from a npz file.
@@ -399,6 +401,7 @@ def load_npz_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
         return load_from_dict(npz_file)
 
     raise ValueError("No recognized data found")
+
 
 def load_pkl_file(path: str) -> Tuple[ArrayLike, List[str], List[int], float]:
     """
@@ -546,15 +549,21 @@ class DataLoader:
                 self.path, self.delimiter
             )
         elif self.path.endswith(".bio"):
-            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_bio_file(self.path, self.channel_names)
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = (
+                load_bio_file(self.path, self.channel_names)
+            )
         elif self.path.endswith(".mat"):
             self.data, self.channel_names, self.frames, self.data_rate, self.loaded_data = load_mat_file(self.path)
         elif self.path.endswith(".csv"):
             self.data, self.channel_names, self.frames, self.data_rate = load_csv_file(self.path, self.delimiter)
         elif self.path.endswith(".npz"):
-            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_npz_file(self.path)
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = (
+                load_npz_file(self.path)
+            )
         elif self.path.endswith(".pkl"):
-            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = load_pkl_file(self.path)
+            self.data, self.channel_names, self.frames, self.data_rate, self.time_vector, self.loaded_data = (
+                load_pkl_file(self.path)
+            )
         else:
             raise ValueError("File format not supported")
         if self.data_rate is None and self.loading_params["data_rate"] is not None:
@@ -582,7 +591,6 @@ class DataLoader:
             else:
                 extracted[key] = value
         return extracted
-
 
     def load_data(self, ignore_filtering: bool = False) -> None:
         """

@@ -8,7 +8,6 @@ os.environ["MKL_NUM_THREADS"] = "1"
 
 from star_emg.rt_automatic_remover import RtArtifactRemover
 
-
 if __name__ == "__main__":
     # Data need to be either a path to a file or a numpy array
     # If data is a numpy array, it should be of shape (n_epochs, n_channels, n_samples)

@@ -25,7 +25,6 @@ from ..io_utils import export_csv, write_txt_file
 from ..processing_utils import Quality
 from ..solution import Solution
 from .stream_widget import StreamWidget
-from .save_utils import StreamSave
 from .popup_utils import FilterDialog
 
 
@@ -317,8 +316,12 @@ class OfflineProcessingWidget(ProcessingWidget):
         """
         Load the processed data from the loaded data.
         """
-        self.remover_options.svd_options.load_config(self.remover_options.remover.data_loader.loaded_data["svd_parameters"])
-        self.remover_options.notch_options.load_config(self.remover_options.remover.data_loader.loaded_data["notch_parameters"])
+        self.remover_options.svd_options.load_config(
+            self.remover_options.remover.data_loader.loaded_data["svd_parameters"]
+        )
+        self.remover_options.notch_options.load_config(
+            self.remover_options.remover.data_loader.loaded_data["notch_parameters"]
+        )
         clean_svd = self.remover_options.remover.data_loader.loaded_data["processed_data_svd"]
         clean_notch = self.remover_options.remover.data_loader.loaded_data["processed_data_notch"]
         for param in ["svd_parameters", "notch_parameters"]:
@@ -327,13 +330,12 @@ class OfflineProcessingWidget(ProcessingWidget):
                     if dic_tmp is None:
                         continue
                     epoch_idx = [int(frame.split("_")[-1])]
-                    clean = clean_notch if dic_tmp['notch_filter'] is True else clean_svd
-                    self.set_quality(clean, epoch_idx, dic_tmp['channel_idxs'], dic_tmp['notch_filter'])
+                    clean = clean_notch if dic_tmp["notch_filter"] is True else clean_svd
+                    self.set_quality(clean, epoch_idx, dic_tmp["channel_idxs"], dic_tmp["notch_filter"])
         return clean_svd, clean_notch
 
     def set_quality(self, clean, epoch_idx, channel_idx, notch_filter=True):
-        """
-        """
+        """ """
         qual_fct = self.quality_notch.compute_quality if notch_filter else self.quality_svd.compute_quality
         qual_fct(
             self.remover_options.get_data(epoch_idx, channel_idx).astype(float),
@@ -402,8 +404,8 @@ class OfflineProcessingWidget(ProcessingWidget):
                 box = QMessageBox()
                 box.setIcon(QMessageBox.Information)
                 box.setText(
-                    "Warning: The txt file will only contain the raw data and the processed data for the selected channels." \
-                    " The processing parameters will not be saved. Are you sure you want to continue?\n" \
+                    "Warning: The txt file will only contain the raw data and the processed data for the selected channels."
+                    " The processing parameters will not be saved. Are you sure you want to continue?\n"
                     " You can save the parameters using the 'Save filter config' button."
                 )
                 box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
@@ -1043,23 +1045,64 @@ class StreamProcessingWidget(ProcessingWidget):
         """
         self.display_options.append_frame_number(frame_number)
 
-    def save_zarrds(self, path, save_path=None):
+    def save_file(self, path=None, ext=".npz"):
         """
-        Save the data to a Zarr dataset.
+        Save the processed and raw data to a file.
         Parameters:
         -----------
+        path: str
+            The path to the file to save.
+        ext: str
+            The extension of the file to save.
+        Returns:
+        --------
+        bool
+            True if the file was saved successfully, False otherwise.
         """
-        if save_path is None:
-            save_path = QFileDialog.getSaveFileName(self, "Save stream session", "", "BioSigLive File (*.bio)")[0]
-            if save_path == "":
-                return False
+        path = Path(path)
+        if path.suffix != ext:
+            path = path.with_suffix(ext)
+
+        self.process_file_path = path
+        dic_to_save, config = self.stream_widget.stream_save.zarr_recorder.to_dict()
         try:
-            if self.stream_widget is None:
-                save_stream = StreamSave(self.stream_widget._tmp_path, save_path)
-            else:
-                save_stream = self.stream_widget.stream_save
-            save_stream.convert_to_file(save_path, zarr_ds_path=path)
-            self.parent.log_box.log(f"Data saved to {save_path}")
+            config.to_csv(path.with_suffix("_filter_params.csv"))
+            if ext == ".mat":
+                sio.savemat(path, dic_to_save)
+            elif ext == ".npz":
+                np.savez(path, **dic_to_save)
+            elif ext == ".bio":
+                save(dic_to_save, path)
+            elif ext == ".txt" or ext == ".csv":
+                # message box
+                box = QMessageBox()
+                box.setIcon(QMessageBox.Information)
+                box.setText(
+                    "Warning: The txt file will only contain the raw data and the processed data for the selected channels."
+                    " The processing parameters will not be saved. Are you sure you want to continue?\n"
+                    " You can save the parameters using the 'Save filter config' button."
+                )
+                box.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                box.exec_()
+                if box.result() == QMessageBox.Cancel:
+                    return
+                channels = self.remover_options.get_channels()
+                suffix = ["", "_clean_svd", "_clean_notch"]
+                channels_str = sum([[chan + s for chan in channels] for s in suffix], [])
+                channels_str = ["time"] + channels_str
+                time_vector = self.remover_options.remover.data_loader.time_vector
+                write_txt_file(
+                    np.hstack((time_vector, self.plot.raw_data, self.plot.clean_svd, self.plot.clean_notch)),
+                    path=path,
+                    headers=channels_str,
+                )
+
         except Exception as e:
-            self.parent.log_box.log(f"Error while saving data: {repr(e)}")
-            return True
+            self.parent.log_box.log(f"Error while saving data: {e}")
+            return False
+        # export_csv(path, **dic_to_save)
+        # self.parent.log_box.log(
+        #     "To use the processed file in signal you can import the txt file saved at " + path.replace(".mat", ".txt")
+        # )
+        self.parent.set_saved_ok(True)
+        return True

@@ -118,7 +118,10 @@ class StreamWidget(QWidget):
             self.parent.parent._check_for_unsaved_work()
             self._get_save_options()
             self.stream_save = StreamSave(
-                save_path=self.save_path, use_zarr=self.use_zarr, compress=self.compress, compression_level=self.compression_level
+                save_path=self.save_path,
+                use_zarr=self.use_zarr,
+                compress=self.compress,
+                compression_level=self.compression_level,
             )
             save_queue = CustomQueue(name="save_queue")
             # self.parent.parent.log_box.log(f"Saving stream to: {self._tmp_path}")

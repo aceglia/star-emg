@@ -3,11 +3,26 @@ This file is an example of how to use the ArtifactRemover class from the star_em
 It demonstrates how to process data and analyze the results. The data used in this example is a file located at 'data\example.mat'.
 """
 
+import numpy
+
 from star_emg.automatic_remover import ArtifactRemover
 
 if __name__ == "__main__":
     # Data need to be either a path to a file or a numpy array
     # If data is a numpy array, it should be of shape (n_epochs, n_channels, n_samples)
+    file = r"D:\Downloads\06-26_13-47-21_hifreq.npz"
+    import numpy as np
+
+    data = np.load(file)
+    with np.load(file) as data:
+        fs = data["fs"]
+        emg = data["emg"][None]
+    emg = np.swapaxes(emg, 1, 2)  # Swap axes to have shape (n_epochs, n_channels, n_samples)
+    from biosiglive import save, load
+
+    dict = {"data_rate": fs, "values": emg}
+    save(dict, r"D:\Downloads\06-26_13-47-21_hifreq.bio", safe=False)
+    data = load(r"D:\Downloads\06-26_13-47-21_hifreq.bio")
     path_file = r"data\test001.txt"
     artifact_remover = ArtifactRemover(data=path_file, signal_filter=True, center=True, cutoff=[10, 500])
     from star_emg.io_utils import write_txt_file
