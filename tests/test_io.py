@@ -268,10 +268,6 @@ def test_apply_filtering_external_data():
     assert filtered.shape == other.shape
 
 
-# =============================================================================
-# TXT loader
-# =============================================================================
-# get the package directory
 import os
 from star_emg.io_utils import load_txt_file
 from star_emg.io_utils import load_mat_file
@@ -287,9 +283,26 @@ base_example_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ex
 )
 def test_load_file(extension, fct):
     example_txt_file = base_example_file + extension
-    data, channels, frames, rate = fct(example_txt_file)
+    if extension in [".txt"]:
+        data, channels, frames, rate, time = fct(example_txt_file)
+    elif extension in [".mat"]:
+        data, channels, frames, rate = fct(example_txt_file)
+    else:
+        data, channels, frames, rate, time, loaded_raw = fct(example_txt_file)
 
     assert data.ndim == 3
     assert len(channels) == 2
     assert len(frames) == 9
     assert int(rate) == 1925
+
+
+def test_read_zarr_ds():
+    from star_emg.app.save_utils import ZarrRecording
+
+    zarr_ds = ZarrRecording.load_dataset(base_example_file + ".stream")
+    data_dict, configs = zarr_ds.to_dict()
+    assert data_dict["values"].ndim == 3
+    assert len(data_dict["channel_names"]) == 2
+    assert len(data_dict["time"]) == 9
+    assert int(data_dict["data_rate"]) == 1925
+    return data_dict

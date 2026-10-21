@@ -89,20 +89,18 @@ class RtArtifactRemover(ArtifactRemover):
             raise ValueError(
                 "Only one channel can be processed at the same time. Please provide a 2D array of shape (1, n_channels)."
             )
-        if self.buffer is None and ["window_size"] not in process_kwargs:
+        if self.buffer is None and "window_size" not in process_kwargs:
             raise ValueError(
                 "The buffer is not initialized. Please provide a window_size parameter to initialize the buffer."
             )
-        elif self.buffer is None or process_kwargs["window_size"] != self.buffer.size:
-            if self.buffer is not None:
-                tmp_data, tmp_time = self.buffer.get()
-            else:
-                tmp_data = None
-            self.buffer = CircularBuffer(1, process_kwargs["window_size"])
-            if tmp_data is not None:
-                self.buffer.append(
-                    x=tmp_data[-process_kwargs["window_size"] :], t=tmp_time[-process_kwargs["window_size"] :]
-                )
+        elif self.buffer is not None:
+            tmp_data, tmp_time = self.buffer.get()
+            if "window_size" in process_kwargs and process_kwargs["window_size"] != self.buffer.size:
+                self.buffer = CircularBuffer(1, process_kwargs["window_size"])
+                if tmp_data is not None:
+                    self.buffer.append(
+                        x=tmp_data[-process_kwargs["window_size"] :], t=tmp_time[-process_kwargs["window_size"] :]
+                    )
 
         self.buffer.append(data)
         if not self.buffer.full:

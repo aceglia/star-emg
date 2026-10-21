@@ -38,12 +38,12 @@ def test_process_chunk_requires():
     remover = RtArtifactRemover(window_size=1000)
 
     with pytest.raises(ValueError):
-        remover.process_chunck(
+        remover.process_chunk(
             np.random.randn(2, 100),
             notch_filter=True,
         )
     with pytest.raises(AssertionError):
-        remover.process_chunck(
+        remover.process_chunk(
             np.random.randn(100),
             notch_filter=True,
         )
@@ -55,13 +55,13 @@ def test_process_chunk_buffer_not_full(chunk_size):
     remover = RtArtifactRemover(window_size=1000, center=True, data_rate=2000)
     chunk = np.random.randn(1, chunk_size)
 
-    result = remover.process_chunck(
+    result = remover.process_chunk(
         chunk,
         notch_filter=True,
     )
     if chunk_size == 500:
         assert result is None
-        result = remover.process_chunck(
+        result = remover.process_chunk(
             chunk,
             notch_filter=True,
         )
