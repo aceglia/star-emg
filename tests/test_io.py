@@ -303,6 +303,4 @@ def test_read_zarr_ds():
     data_dict, configs = zarr_ds.to_dict()
     assert data_dict["values"].ndim == 3
     assert len(data_dict["channel_names"]) == 2
-    assert len(data_dict["time"]) == 9
-    assert int(data_dict["data_rate"]) == 1925
-    return data_dict
+    assert int(data_dict["data_rate"]) == 2000

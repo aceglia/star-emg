@@ -21,6 +21,7 @@ dependencies = [
     "biosiglive>=2.0.3",
     "matplotlib",
     "pandas",
+    "zarr",
 ]
 
 [project.optional-dependencies]
