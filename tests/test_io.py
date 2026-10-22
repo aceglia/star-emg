@@ -58,7 +58,7 @@ def test_load_from_dict():
         "data_rate": 2000,
     }
 
-    array, channels, frames, rate = load_from_dict(data)
+    array, channels, frames, rate, time, loaded_raw = load_from_dict(data)
 
     assert array.shape == (2, 4, 100)
     assert channels == ["a", "b", "c", "d"]
@@ -71,7 +71,7 @@ def test_load_from_dict_default_channel_names():
         "values": np.random.randn(2, 3, 100),
     }
 
-    array, channels, frames, rate = load_from_dict(data)
+    array, channels, frames, rate, time, loaded_raw = load_from_dict(data)
 
     assert len(channels) == 3
     assert channels[0] == "channel_0"

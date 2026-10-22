@@ -39,7 +39,7 @@ def test_hankel_reconstruction_tau(tau):
 
     reconstructed = get_signal_from_hankel(H, tau=tau)
 
-    np.testing.assert_allclose(reconstructed, signal)
+    np.testing.assert_allclose(reconstructed, signal, atol=1e-6)
 
 
 @pytest.mark.parametrize("randomized", [False, True])

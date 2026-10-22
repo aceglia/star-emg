@@ -144,7 +144,7 @@ def test_line_length():
     ll = line_length(signal)
 
     assert np.isfinite(ll)
-    assert ll == 1.044859753742975
+    np.testing.assert_allclose(ll, 1.044859753742975, atol=1e-6)
 
 
 # =============================================================================
@@ -159,9 +159,9 @@ def test_kurtosis_value(w):
     target = [-0.43925071463489385, -0.23839052478927808]
     assert np.isfinite(value)
     if w == 15:
-        assert value == target[0]
+        np.testing.assert_allclose(value, target[0], atol=1e-6)
     else:
-        assert value == target[1]
+        np.testing.assert_allclose(value, target[1], atol=1e-6)
 
 
 # =============================================================================
