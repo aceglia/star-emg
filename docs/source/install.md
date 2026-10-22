@@ -15,11 +15,9 @@ matches your use case.
 The standalone application is a Windows-only build of the graphical interface.
 It bundles its own Python runtime, so **nothing else needs to be installed**.
 
-1. Download the latest `StAR-EMG` release from the
-   [GitHub repository](https://github.com/aceglia/star-emg).
-2. Extract the archive to a folder of your choice (for example
-   `C:\Tools\StAR-EMG`).
-3. Double-click **`StAR-EMG.exe`** in the extracted folder.
+1. Go on the latest release of star-emg [https://github.com/aceglia/star-emg/releases].
+2. Extract the app_bin.zip file in the assets.
+3. Double-click **`StAR-EMG.exe`** in the extracted dist/Star-emg folder.
 
 ```{figure} images/app_folder.png
 :alt: Content of the extracted StAR-EMG folder on Windows, with StAR-EMG.exe highlighted.
@@ -39,6 +37,9 @@ it. To make a shortcut, right-click the `.exe` and choose *Send to > Desktop
 The standalone application does not necessarily contain the most recent
 developments of the Python package. It is rebuilt and updated at every
 release.
+```
+```{note}
+A console open when using the app. Please keep it open and repport any message when creating an issue about a bug. 
 ```
 
 Once the application opens, continue with {doc}`remover_app`.
@@ -63,15 +64,6 @@ Once the application opens, continue with {doc}`remover_app`.
 | `cma`          | Experimental parameter optimizer (`star_emg.optimizer`)           | Optional |
 | `tkinter`      | Result window. Included with the standard Python installers and with conda Python | Always |
 
-```{note}
-`biosiglive` is developed in parallel with `StAR-EMG`. The real-time features
-rely on its `CircularBuffer` and `AsyncTCPClient` classes, which are not
-available in every published release. If you get an `ImportError` mentioning
-one of these names, install the development version of `biosiglive` from
-GitHub:
-
-    pip install git+https://github.com/aceglia/biosiglive.git
-```
 
 ### Installing from conda
 
@@ -91,11 +83,10 @@ conda install -c conda-forge star_emg
    conda activate star_emg
    ```
 
-3. Install the dependencies that are not part of that file:
+3. Install the dependencies that are not part of that file (if needed):
 
    ```bash
-   pip install control
-   pip install git+https://github.com/aceglia/biosiglive.git
+   pip install control fbpca
    ```
 
 4. Install the package from the root folder of the repository:
@@ -196,5 +187,5 @@ reading, no GUI, no notch filter). Build instructions are given in {doc}`cpp`.
 ## Using the documentation examples
 
 Several examples refer to a `data` folder that contains sample recordings
-(for instance `data\test001.txt`). Replace these paths with your own files; see
+(for instance `data\example.npz`). Replace these paths with your own files; see
 {doc}`data_formats` for the accepted formats.
