@@ -1,5 +1,5 @@
 ---
-title: "`StAR-EMG`: A package for Stimulation Artifact Removal in EMG during transcutaneous spinal stimulation"
+title: "StAR-EMG: A package for Stimulation Artifact Removal in EMG during transcutaneous spinal stimulation"
 tags:
   - python
   - C++
@@ -188,6 +188,9 @@ if __name__ == "__main__":
 [@ceglia2026direct]
 
 Remove project : https://www.usherbrooke.ca/medecine/actualites/nos-grands-dossiers/projet-re-move
+
+# AI usage disclosure
+AI tools were used to improve the grammar and fluency of the paper (Grammarly, Language tool and ChatGPT), to generate a large part of the documentation (Claude), and to help improve parts of the code (not to write the software as a whole) (ChatGPT). The authors reviewed and corrected all AI-assisted output at every stage and take full responsibility for the submission.
 
 # Acknowledgements
 
