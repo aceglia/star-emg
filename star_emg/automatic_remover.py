@@ -455,7 +455,8 @@ class ArtifactRemover:
         """
         if return_dict:
             out_dict = {"data": data.copy()}
-
+        if isinstance(fs, np.ndarray):
+            fs = fs.item()
         first_peak = frequency_peaks if first_peak is None else first_peak
         harmonics = [i * frequency_peaks + first_peak for i in range(0, int((fs / 2) / frequency_peaks) + 1)]
         if b_list is None or a_list is None:
