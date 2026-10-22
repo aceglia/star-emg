@@ -1,58 +1,49 @@
-
 name: Run the tests
 
-# on: [pull_request]
 on:
   push:
-    branches: [main] 
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-20.04
-            label: linux-64
-            prefix: /usr/share/miniconda3/envs/star-emg
-          - os: macos-latest
-            label: osx-64
-            prefix: /Users/runner/miniconda3/envs/star-emg
-          - os: windows-latest
-            label: win-64
-            prefix: C:\Miniconda3\envs\star-emg
-    name: ${{ matrix.label }}
+  test:
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     defaults:
       run:
-        shell: bash -l {0}
+        shell: bash -el {0}
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
-      - uses: actions/checkout@v2
-      
-      - name: Setup environment
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          activate-environment: star-emg
-          environment-file: environment.yml
-        
-      - name: Print mamba info
-        run: | 
-          mamba config --show
-          mamba info
-          mamba list
-          
-      - name: Install extra dependencies
-        run: mamba install black pytest -cconda-forge
+      - uses: actions/checkout@v4
 
-      - name: Run the actual tests
+      - name: Setup environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          activate-environment: star_emg
+          environment-file: environment.yml
+          auto-activate-base: false
+
+      - name: Show environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Install package and test tools
+        run: |
+          pip install . --no-deps
+          conda install -c conda-forge pytest black
+
+      - name: Run the tests
         run: pytest tests/
 
-          
-      - name: Test installed version of star-emg
-        run: | 
-          pip install .
-          cd
-          python -c "import start_emg"
+      - name: Test installed version outside the repo
+        run: |
+          cd "$RUNNER_TEMP"
+          python -c "import star_emg; print(star_emg.__file__)"
