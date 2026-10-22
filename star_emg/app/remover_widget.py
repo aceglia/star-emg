@@ -608,16 +608,18 @@ class OfflineRemover(Remover):
         """
         self.remover = ArtifactRemover(data=path_file, **kwargs)
         loaded = self.remover.data_loader.loaded_data
-        preprocessing = loaded["preprocessing"]
-        same = [1 if preprocessing[key] == kwargs[key] else 0 for key in preprocessing.keys() if key != "data_rate"]
-        if not any(same):
-            kwargs = {key: preprocessing[key] for key in preprocessing.keys()}
-            kwargs["data_rate"] = loaded["data_rate"]
-            self.parent.parent.log_box.log(
-                f"WARNING: The data was preprocessed with different parameters than the ones you provided. Falling back to {kwargs}."
-            )
-        if loaded["processed_data_notch"] is not None or loaded["processed_data_svd"] is not None:
-            self.processed_data = True
+        if "preprocessing" in loaded:
+            preprocessing = loaded["preprocessing"]
+            same = [1 if preprocessing[key] == kwargs[key] else 0 for key in preprocessing.keys() if key != "data_rate"]
+            if not any(same):
+                kwargs = {key: preprocessing[key] for key in preprocessing.keys()}
+                kwargs["data_rate"] = loaded["data_rate"]
+                self.parent.parent.log_box.log(
+                    f"WARNING: The data was preprocessed with different parameters than the ones you provided. Falling back to {kwargs}."
+                )
+        if "processed_data_notch" in loaded:
+            if loaded["processed_data_notch"] is not None or loaded["processed_data_svd"] is not None:
+                self.processed_data = True
         data_shape = self.remover.data_loader.init_data.shape
         window = 25_000
         total_epochs = data_shape[0]

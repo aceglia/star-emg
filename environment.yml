@@ -10,3 +10,4 @@ dependencies:
 - scipy
 - pyqtgraph
 - PyQt5
+- pip

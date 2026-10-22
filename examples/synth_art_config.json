@@ -1,0 +1,22 @@
+{
+    "amplitude": 1,
+    "delay_1": 0.1,
+    "delay_2": 0.2,
+    "num": [
+        1
+    ],
+    "den": [
+        0.02,
+        0.5,
+        12
+    ],
+    "T": 1,
+    "factors": [
+        1,
+        2,
+        1
+    ],
+    "sampling_rate": 2000,
+    "duration": 0.007,
+    "stim_freq": 30
+}

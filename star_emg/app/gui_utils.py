@@ -28,6 +28,7 @@ class LogBox(QPlainTextEdit):
     def log(self, message: str) -> None:
         """
         Log message to the log box.
+
         Parameters:
         -----------
         message: str
@@ -65,6 +66,7 @@ class LogBox(QPlainTextEdit):
 def ensure_list(x: any):
     """
     Function to ensure that x is a list.
+
     Parameters:
     -----------
     x: any
@@ -73,6 +75,7 @@ def ensure_list(x: any):
     --------
     list: x if x is already a list, else [x].
     """
+
     return x if isinstance(x, list) else [x]
 
 

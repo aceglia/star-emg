@@ -1,24 +1,53 @@
-# create a toml file with the following content
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "star-emg"
+name = "star_emg"
 version = "0.0.1"
 authors = [
   { name="Amedeo ceglia", email="amedeo.ceglia@umontreal.ca" },
 ]
 description = "Package for Stimulation Artifact Removal in EMG during transcutaneous spinal stimulation."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
+license = { text = "MIT" } 
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "scipy", "matplotlib"]
+dependencies = [
+    "numpy>=2.0.0",
+    "scipy",
+    "pyqtgraph",
+    "PyQt5",
+    "biosiglive>=2.0.3",
+    "matplotlib",
+    "pandas",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/aceglia/star-emg"
 "Bug Tracker" = "https://github.com/aceglia/star-emg/issues"
+
+[tool.setuptools.packages.find]
+include = ["star_emg*"]
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
