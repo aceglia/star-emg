@@ -12,4 +12,5 @@ dependencies:
 - pyqtgraph
 - pandas
 - pyqt >=5.15,<6
+- zarr
 - pip
