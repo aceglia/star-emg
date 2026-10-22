@@ -174,10 +174,12 @@ class OptionWidget(QWidget):
         )
         channel_names = self.channel_selecter.get_channel_names()
         self.channel_idxs = self.channel_selecter.get_channel_idxs()
+        process_arguments_copy = process_arguments.copy()
         process_arguments["channel_name"] = []
         for c, ch in enumerate(self.channel_idxs):
-            process_arguments["channel_name"].append(channel_names[c])
-            list_empty[ch] = process_arguments.copy()
+            process_arguments_copy["channel_name"] = [channel_names[c]]
+            process_arguments_copy["channel_idxs"] = [ch]
+            list_empty[ch] = process_arguments_copy
         self.process_arguments[f"Frame_{self.current_frame}"] = list_empty
 
     def update_frame(self, frame_number: int = 0):

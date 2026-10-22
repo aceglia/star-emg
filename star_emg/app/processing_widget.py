@@ -416,7 +416,7 @@ class OfflineProcessingWidget(ProcessingWidget):
                 suffix = ["", "_clean_svd", "_clean_notch"]
                 channels_str = sum([[chan + s for chan in channels] for s in suffix], [])
                 channels_str = ["time"] + channels_str
-                time_vector = self.remover_options.remover.data_loader.time_vector
+                time_vector = self.remover_options.remover.data_loader.time_vector[:, None, :]
                 write_txt_file(
                     np.hstack((time_vector, self.plot.raw_data, self.plot.clean_svd, self.plot.clean_notch)),
                     path=path,

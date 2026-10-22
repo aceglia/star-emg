@@ -348,7 +348,7 @@ class GUI(QMainWindow):
         Run the processing widget's save_config method to save the current configuration. The configuration is saved with a name based on the default save name, with "_configuration.json" appended to it. It also logs the save action in the log box.
         """
         if self.default_base_name is not None:
-            file_path = self.default_base_name + "_configuration.json"
+            file_path = str(self.default_base_name) + "_configuration.json"
         else:
             file_path = None
         self.stack.currentWidget().save_config(file_path)
@@ -457,10 +457,6 @@ class GUI(QMainWindow):
         Set the saved_ok attribute to indicate whether the current work is saved or not. If saved_ok is True, it disables the save button in the toolbar, indicating that there are no unsaved changes. If saved_ok is False, it enables the save button in the toolbar, indicating that there are unsaved changes that can be saved.
         """
         self.saved_ok = saved_ok
-        if saved_ok:
-            self.toolbar.save_config_button.setEnabled(False)
-        else:
-            self.toolbar.save_config_button.setEnabled(True)
 
     def closeEvent(self, event):
         """Intercept the close action to run custom code."""
