@@ -88,6 +88,6 @@ in the repository.
 Links
 =====
 
-* Documentation: https://github.com/aceglia/star-emg.github.io/
+* Documentation: https://aceglia.github.io/star-emg/ 
 * Source code: https://github.com/aceglia/star-emg
 * Bug tracker: https://github.com/aceglia/star-emg/issues
