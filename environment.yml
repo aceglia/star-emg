@@ -9,5 +9,5 @@ dependencies:
 - numpy
 - scipy
 - pyqtgraph
-- PyQt5
+- pyqt >=5.15,<6
 - pip
