@@ -30,7 +30,7 @@ jobs:
           pip install ".[docs]"
 
       - name: Build Sphinx docs
-        run: sphinx-build -b html docs docs/build/html
+        run: sphinx-build -b html docs/source docs/build/html
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
